@@ -11,7 +11,7 @@ http://github.com/fusesource/jvmassert
 
 ## What does it actually do?
 
-Lets say you have simple class that is use the Scala assert method:
+Lets say you have simple class that is using the Scala assert method:
 
 
     class Example {
