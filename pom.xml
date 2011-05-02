@@ -27,7 +27,7 @@
 
   <groupId>org.fusesource.jvmassert</groupId>
   <artifactId>jvmassert</artifactId>
-  <version>1.0</version>
+  <version>1.1-SNAPSHOT</version>
 
   <name>${project.artifactId}</name>
   <description>A Scala compiler plugin to enable runtime assert disabling.</description>
