@@ -1,0 +1,189 @@
+/**
+ * Copyright (C) 2011-2011 the original author or authors.
+ * See the notice.md file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.fusesource.jvmassert
+
+import scala.tools.nsc.Global
+import scala.tools.nsc.plugins.Plugin
+import scala.tools.nsc.plugins.PluginComponent
+import scala.tools.nsc.transform._
+import scala.tools.nsc.symtab.Flags._
+import collection.mutable.{Stack, HashMap}
+
+/**
+ * Scala compiler plugin which integrates Scala assertions with the JVM assertion framework.
+ */
+class JvmAssert(val global: Global) extends Plugin {
+
+  val name = "jvmassert"
+  val description = "Integrates Scala assertions with the JVM assertion framework."
+  val components : List[PluginComponent] =  List(JvmAssertInjector)
+
+  object JvmAssertInjector extends PluginComponent with Transform with TypingTransformers  {
+
+    import global._
+
+    val global = JvmAssert.this.global
+    val phaseName = "jvmassert"
+
+    val runsAfter = List("parser");
+    override val runsBefore =  List[String]("namer")
+
+    class ModuleInfo {
+      var using_asserts = false
+      var module_exists = false
+    }
+
+    protected def newTransformer(unit: CompilationUnit): Transformer = new Transformer {
+
+      override def transform(tree: Tree): Tree = {
+        val rc = update(tree)
+//        println("Tree after transformation: "+(nodePrinters nodeToString rc))
+        rc
+      }
+
+      def update(tree: Tree):Tree = {
+        var rc = List[Symbol]()
+        var outer_class:String = null
+        var moduleInfoStack = Stack[HashMap[String,ModuleInfo]]()
+
+        def entering[T](clazz:String, ismod:Boolean)(func: =>T):T = {
+          if( outer_class==null ) {
+            val info = moduleInfoStack.top.getOrElseUpdate(clazz, new ModuleInfo)
+            if( ismod ) {
+              info.module_exists = true;
+            }
+            outer_class = clazz
+            try {
+              func
+            } finally {
+              outer_class = null
+            }
+          } else {
+            func
+          }
+        }
+
+        new Transformer {
+          override def transform(tree: Tree): Tree = {
+            tree match {
+
+              case PackageDef(pid, stats) =>
+
+                // Lets the map we push here will
+                // track any classes that have assert calls
+                // used.
+                moduleInfoStack.push(HashMap())
+                val rc = super.transform(tree)
+                val modules = moduleInfoStack.pop()
+
+                //
+                // We may have to create some new modules on the fly here...
+                val new_mods:List[Tree] = modules.flatMap { case (module,info) =>
+                  if ( info.using_asserts && !info.module_exists ) {
+                    // Lets create a SYNTHETIC Module to hold the $enable_assertions val
+                    Some(ModuleDef(
+                      Modifiers(SYNTHETIC),
+                      module,
+                      Template(
+                        List(TypeTree(definitions.ScalaObjectClass.tpe)),
+                        ValDef(Modifiers(0),nme.WILDCARD, TypeTree(NoType),EmptyTree ),
+                        List(
+                          DefDef(
+                            Modifiers(0), nme.CONSTRUCTOR, List(), List(List()),TypeTree(),Block(
+                              Apply(Select(Super("", ""),nme.CONSTRUCTOR),Nil),
+                              Literal(Constant())
+                            )
+                          )
+                        )
+                      )
+                    ))
+                  } else {
+                    None
+                  }
+                }.toList
+
+
+                // Ok Now lets add the SYNTHETIC $enable_assertions val to the modules..
+                val new_stats: List[Tree] = (stats ::: new_mods).map { tree =>
+                  tree match {
+
+                    case ModuleDef(mods, name, impl) =>
+                      val info = modules.get(name.toString())
+                      if ( info.isDefined && info.get.using_asserts ) {
+
+                        // Lets add the $enable_assertions val
+                        val new_defs = ValDef(
+                          Modifiers(SYNTHETIC),
+                          "$enable_assertions",
+                          TypeTree(),
+                          Select(Ident("getClass"),"desiredAssertionStatus")
+                        ) :: Nil
+
+                        val new_impl = treeCopy.Template(impl, impl.parents, impl.self,  impl.body ::: new_defs)
+                        treeCopy.ModuleDef(tree, mods, name, new_impl)
+
+                      } else {
+                        tree
+                      }
+
+                    case _ =>
+                      tree
+                  }
+                }
+
+                treeCopy.PackageDef(tree, pid, new_stats )
+
+
+              case ClassDef(mods, name, tparams, impl) =>
+                entering(name.toString(), false) {
+                  super.transform(tree)
+                }
+
+              case ModuleDef(mods, name, impl) =>
+                entering(name.toString(), true) {
+                  super.transform(tree)
+                }
+
+              case Apply(method, args) =>
+
+                // Wrap any assert method calls with an if statement.
+                method match {
+                  case x:Ident if (x.name.toString() == "assert") =>
+
+                    moduleInfoStack.top.get(outer_class).get.using_asserts = true
+
+                    If( Select(Ident(outer_class), "$enable_assertions"),
+                      treeCopy.Apply(tree, method, args),
+                      EmptyTree
+                    )
+
+                  case _ =>
+                    super.transform(tree)
+                }
+
+              case _ =>
+                super.transform(tree)
+            }
+          }
+        }.transform(tree);
+      }
+
+    }
+  }
+
+}
