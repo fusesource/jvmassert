@@ -50,14 +50,7 @@ class JvmAssert(val global: Global) extends Plugin {
 
     protected def newTransformer(unit: CompilationUnit): Transformer = new Transformer {
 
-      override def transform(tree: Tree): Tree = {
-        val rc = update(tree)
-//        println("Tree after transformation: "+(nodePrinters nodeToString rc))
-        rc
-      }
-
-      def update(tree: Tree):Tree = {
-        var rc = List[Symbol]()
+      override def transform(tree: Tree):Tree = {
         var outer_class:String = null
         var moduleInfoStack = Stack[HashMap[String,ModuleInfo]]()
 
@@ -78,7 +71,7 @@ class JvmAssert(val global: Global) extends Plugin {
           }
         }
 
-        new Transformer {
+        val transformer = new Transformer {
           override def transform(tree: Tree): Tree = {
             tree match {
 
@@ -88,7 +81,7 @@ class JvmAssert(val global: Global) extends Plugin {
                 // track any classes that have assert calls
                 // used.
                 moduleInfoStack.push(HashMap())
-                val rc = super.transform(tree)
+                var new_tree = (super.transform(tree)).asInstanceOf[PackageDef]
                 val modules = moduleInfoStack.pop()
 
                 //
@@ -105,7 +98,7 @@ class JvmAssert(val global: Global) extends Plugin {
                         List(
                           DefDef(
                             Modifiers(0), nme.CONSTRUCTOR, List(), List(List()),TypeTree(),Block(
-                              Apply(Select(Super("", ""),nme.CONSTRUCTOR),Nil),
+                              Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY),nme.CONSTRUCTOR),Nil),
                               Literal(Constant())
                             )
                           )
@@ -119,7 +112,7 @@ class JvmAssert(val global: Global) extends Plugin {
 
 
                 // Ok Now lets add the SYNTHETIC $enable_assertions val to the modules..
-                val new_stats: List[Tree] = (stats ::: new_mods).map { tree =>
+                val new_stats: List[Tree] = (new_tree.stats ::: new_mods).map { tree =>
                   tree match {
 
                     case ModuleDef(mods, name, impl) =>
@@ -146,8 +139,8 @@ class JvmAssert(val global: Global) extends Plugin {
                   }
                 }
 
-                treeCopy.PackageDef(tree, pid, new_stats )
 
+                treeCopy.PackageDef(new_tree, pid, new_stats )
 
               case ClassDef(mods, name, tparams, impl) =>
                 entering(name.toString(), false) {
@@ -180,7 +173,11 @@ class JvmAssert(val global: Global) extends Plugin {
                 super.transform(tree)
             }
           }
-        }.transform(tree);
+        }
+
+        val result = transformer.transform(tree);
+//        println("dump: "+(nodePrinters nodeToString result))
+        result
       }
 
     }
