@@ -1,3 +1,8 @@
+[JvmAssert 1.1](http://github.com/fusesource/jvmassert), released 2011-05-12
+-------------------------------------------------------------------------
+
+* Ported to Scala 2.9.0
+
 [JvmAssert 1.0](http://github.com/fusesource/jvmassert), released 2011-05-02
 -------------------------------------------------------------------------
 

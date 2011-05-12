@@ -8,3 +8,4 @@ nbactions.xml
 webgen/out
 webgen/webgen.cache
 target
+.idea
