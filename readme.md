@@ -17,8 +17,6 @@ Lets say you have simple class that is using the Scala assert method:
     class Example {
       def test = {
         assert( (1+1) == 2, "Addition broken")
-        val expected = 2
-        assert( (1+1) == expected )
       }
     }
 
@@ -32,9 +30,6 @@ previous example to:
       def test = {
         if( Example.$enable_assertions ) {
           assert( (1+1) == 2, "Addition broken")
-        }
-        if( Example.$enable_assertions ) {
-          assert( (1+1) == 2, "1.$plus(1).$eq$eq(expected) with expected=>%s".format(expected))
         }
       }
     }
@@ -59,8 +54,23 @@ Then you will get the an error message like:
       at scala.Predef$.assert(Predef.scala:103)
       at Example$.main(t.scala:5)
       at Example.main(t.scala)
-    
 
+## Adding to Your Maven Based Build
+
+Just add the configuration to your `maven-scala-plugin`:
+
+    <configuration>
+      ...
+      <compilerPlugins>
+        <compilerPlugin>
+          <groupId>org.fusesource.jvmassert</groupId>
+          <artifactId>jvmassert</artifactId>
+          <version>1.2</version>
+        </compilerPlugin>
+      </compilerPlugins>
+      ..
+    </configuration>
+    
 ## Known Issues
 
 This plugin `if` wraps any method call who's method name
