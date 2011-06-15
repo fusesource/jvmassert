@@ -17,6 +17,8 @@ Lets say you have simple class that is using the Scala assert method:
     class Example {
       def test = {
         assert( (1+1) == 2, "Addition broken")
+        val expected = 2
+        assert( (1+1) == expected )
       }
     }
 
@@ -24,15 +26,40 @@ When you enable the `jvmassert` compiler plugin, it will translate the
 previous example to:
 
     object Example {
-      val $enable_assertions = getClass.desiredAssertionStatus
+      final val $enable_assertions = getClass.desiredAssertionStatus
     }
     class Example {
       def test = {
         if( Example.$enable_assertions ) {
           assert( (1+1) == 2, "Addition broken")
         }
+        if( Example.$enable_assertions ) {
+          assert( (1+1) == 2, "1.$plus(1).$eq$eq(expected) with expected=>%s".format(expected))
+        }
       }
     }
+    
+## Automatic Assertion Message 
+
+If you don't give the assertion an explicit message, the plugin 
+will generate the message for you based on the expression.  For
+example if you run the following example:
+
+    object Example {
+      def main(args:Array[String]) = {
+        val actual = 2
+        val expected = 3
+        assert( actual == expected )
+      }
+    }
+
+Then you will get the an error message like:
+
+    Exception in thread "main" java.lang.AssertionError: assertion failed: actual.$eq$eq(expected) with actual=>2, expected=>3
+      at scala.Predef$.assert(Predef.scala:103)
+      at Example$.main(t.scala:5)
+      at Example.main(t.scala)
+    
 
 ## Known Issues
 
