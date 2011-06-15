@@ -22,7 +22,7 @@ import scala.tools.nsc.plugins.Plugin
 import scala.tools.nsc.plugins.PluginComponent
 import scala.tools.nsc.transform._
 import scala.tools.nsc.symtab.Flags._
-import collection.mutable.{Stack, HashMap}
+import collection.mutable.{LinkedHashMap, Stack, HashMap}
 
 /**
  * Scala compiler plugin which integrates Scala assertions with the JVM assertion framework.
@@ -160,8 +160,39 @@ class JvmAssert(val global: Global) extends Plugin {
 
                     moduleInfoStack.top.get(outer_class).get.using_asserts = true
 
+                    val assertCall = args match {
+                      case arg :: Nil =>
+                        // If it's  a one arg assert, lets auto
+                        // generate the 2nd message arg.
+
+                        val idents_map = LinkedHashMap[Name, Tree]()
+                        def add_idents(tree:Tree):Unit = tree match {
+                          case Ident(name) => idents_map += name->tree
+                          case Apply(method, args) =>
+                            method match {
+                              case Select(lhs, rhs)=> add_idents(lhs)
+                              case x => // println("ignoring : "+x.getClass)
+                            }
+                            args.foreach(add_idents(_))
+                          case x => // println("ignoring: "+x.getClass)
+                        }
+                        add_idents(arg)
+                        val idents = idents_map.values.toList
+
+                        val message = if( idents.isEmpty ) {
+                          Literal(Constant(arg.toString))
+                        } else {
+                          val format = arg.toString+" with "+(idents.map(_+"=>%s").mkString(", "))
+                          Apply(Select(Literal(Constant(format)),"format"), idents)
+                        }
+
+                        treeCopy.Apply(tree, method, List(arg,message))
+                      case _ =>
+                        tree
+                    }
+
                     If( Select(Ident(outer_class), "$enable_assertions"),
-                      treeCopy.Apply(tree, method, args),
+                      assertCall,
                       EmptyTree
                     )
 
@@ -177,6 +208,7 @@ class JvmAssert(val global: Global) extends Plugin {
 
         val result = transformer.transform(tree);
 //        println("dump: "+(nodePrinters nodeToString result))
+//        treeBrowser browse result
         result
       }
 
