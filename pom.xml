@@ -37,7 +37,7 @@
     <forge-project-id-uc>RUNTIMEASSERT</forge-project-id-uc>
     <release-altGitURL>scm:git:git@github.com:fusesource/runtimeassert.git</release-altGitURL>
     
-    <scala-version>2.9.0</scala-version>
+    <scala-version>2.9.0-1</scala-version>
     <maven-scala-plugin-version>2.15.0</maven-scala-plugin-version>
     
   </properties>
