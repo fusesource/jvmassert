@@ -121,7 +121,7 @@ class JvmAssert(val global: Global) extends Plugin {
 
                         // Lets add the $enable_assertions val
                         val new_defs = ValDef(
-                          Modifiers(SYNTHETIC),
+                          Modifiers(SYNTHETIC|FINAL),
                           "$enable_assertions",
                           TypeTree(),
                           Select(Ident("getClass"),"desiredAssertionStatus")
