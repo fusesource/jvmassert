@@ -23,6 +23,7 @@ import scala.tools.nsc.plugins.PluginComponent
 import scala.tools.nsc.transform._
 import scala.tools.nsc.symtab.Flags._
 import collection.mutable.{LinkedHashMap, Stack, HashMap}
+import scala.reflect.NameTransformer
 
 /**
  * Scala compiler plugin which integrates Scala assertions with the JVM assertion framework.
@@ -180,7 +181,7 @@ class JvmAssert(val global: Global) extends Plugin {
                         val idents = idents_map.values.toList
 
                         val message = if( idents.isEmpty ) {
-                          Literal(Constant(arg.toString))
+                          Literal(Constant(NameTransformer.decode(arg.toString)))
                         } else {
                           val format = arg.toString+" with "+(idents.map(_+"=>%s").mkString(", "))
                           Apply(Select(Literal(Constant(format)),"format"), idents)
