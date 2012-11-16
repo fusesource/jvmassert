@@ -94,7 +94,7 @@ class JvmAssert(val global: Global) extends Plugin {
                       Modifiers(SYNTHETIC),
                       module,
                       Template(
-                        List(TypeTree(definitions.ScalaObjectClass.tpe)),
+                        List(TypeTree(definitions.ObjectClass.tpe)),
                         ValDef(Modifiers(0),nme.WILDCARD, TypeTree(NoType),EmptyTree ),
                         List(
                           DefDef(
