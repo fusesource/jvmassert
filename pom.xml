@@ -21,7 +21,7 @@
   <parent>
     <groupId>org.fusesource</groupId>
     <artifactId>fusesource-pom</artifactId>
-    <version>1.5</version>
+    <version>1.9</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -36,11 +36,8 @@
   <properties>
     <forge-project-id>runtimeassert</forge-project-id>
     <forge-project-id-uc>RUNTIMEASSERT</forge-project-id-uc>
-    <release-altGitURL>scm:git:git@github.com:fusesource/runtimeassert.git</release-altGitURL>
-    
-    <scala-version>2.9.2</scala-version>
+    <scala-version>2.10.0</scala-version>
     <maven-scala-plugin-version>3.1.0</maven-scala-plugin-version>
-    
   </properties>
 
   <url>http://${forge-project-id}.fusesource.org/</url>
@@ -56,8 +53,7 @@
   
   <scm>
     <connection>scm:git:git://forge.fusesource.com/${forge-project-id}.git</connection>
-    <!-- Work around for issue: http://jira.codehaus.org/browse/SCM-444 -->
-    <developerConnection>${release-altGitURL}</developerConnection>
+    <developerConnection>scm:git:git@github.com:fusesource/runtimeassert.git</developerConnection>
     <url>http://github.com/fusesource/runtimeassert/tree/master</url>
   </scm>
 
